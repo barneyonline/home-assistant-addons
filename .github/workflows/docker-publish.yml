@@ -7,8 +7,7 @@ on:
       - 'hamh/**'
       - 'hamh_test/**'
       - '.github/workflows/ghcr-publish.yml'
-
-workflow_dispatch:
+  workflow_dispatch:
 
 env:
   # All images get pushed to ghcr.io
