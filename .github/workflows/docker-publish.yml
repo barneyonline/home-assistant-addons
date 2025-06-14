@@ -1,0 +1,68 @@
+name: Build & Publish Home-Assistant add-ons to GHCR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'hamh/**'
+      - 'hamh_test/**'
+      - '.github/workflows/ghcr-publish.yml'
+
+env:
+  # All images get pushed to ghcr.io
+  REGISTRY: ghcr.io
+  # GHCR requires the repository owner / organisation to be lower-case
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    # Grant just the permissions we need
+    permissions:
+      contents: read          # checkout
+      packages: write         # push to GHCR
+
+    strategy:
+      matrix:
+        include:
+          # ─── Add new add-on directories here ──┐ image = final tag component
+          - context: hamh       # → ./hamh
+            image: home-assistant-matter-hub-addon
+          - context: hamh_test  # → ./hamh_test
+            image: home-assistant-matter-hub-addon-test
+          # ───────────────────────────────────────┘
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (multi-arch emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log-in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags & labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}
+          tags: |
+            type=sha,format=short     # ghcr.io/…:<commit-sha>
+            type=raw,value=latest     # ghcr.io/…:latest
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
