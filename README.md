@@ -1,4 +1,4 @@
-# Home Assistant Addons by t0bst4r
+# Home Assistant Addons by barneyonline
 
 This repository provides the following addons for Home-Assistant:
 
