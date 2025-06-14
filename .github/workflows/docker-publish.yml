@@ -10,6 +10,11 @@ on:
 
   # manual “Run workflow” button
   workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: The release version of Home Assistant Matter Hub
+        required: true
 
 env:
   REGISTRY: ghcr.io
