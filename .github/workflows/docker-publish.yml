@@ -1,68 +1,55 @@
-name: Build & Publish Home-Assistant add-ons to GHCR
+name: Build & Publish Matter-Hub Test Add-on
 
 on:
+  # build automatically on pushes that touch the add-on or the workflow itself
   push:
     branches: [main]
     paths:
-      - 'hamh/**'
       - 'hamh_test/**'
       - '.github/workflows/ghcr-publish.yml'
+
+  # manual “Run workflow” button
   workflow_dispatch:
 
 env:
-  # All images get pushed to ghcr.io
   REGISTRY: ghcr.io
-  # GHCR requires the repository owner / organisation to be lower-case
   IMAGE_NAMESPACE: ${{ github.repository_owner }}
+  IMAGE_NAME: home-assistant-matter-hub-addon   # final piece of the tag
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # Grant just the permissions we need
     permissions:
-      contents: read          # checkout
-      packages: write         # push to GHCR
-
-    strategy:
-      matrix:
-        include:
-          # ─── Add new add-on directories here ──┐ image = final tag component
-          - context: hamh       # → ./hamh
-            image: home-assistant-matter-hub-addon
-          - context: hamh_test  # → ./hamh_test
-            image: home-assistant-matter-hub-addon-test
-          # ───────────────────────────────────────┘
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU (multi-arch emulation)
-        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v3          # enable multi-arch
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log-in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive image tags & labels
+      - name: Generate tags & labels
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,format=short     # ghcr.io/…:<commit-sha>
-            type=raw,value=latest     # ghcr.io/…:latest
+            type=sha,format=short
+            type=raw,value=latest
 
-      - name: Build and push multi-arch image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.context }}
+          context: hamh_test
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: ${{ steps.meta.outputs.tags }}
