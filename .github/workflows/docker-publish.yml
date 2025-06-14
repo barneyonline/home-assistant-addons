@@ -8,6 +8,8 @@ on:
       - 'hamh_test/**'
       - '.github/workflows/ghcr-publish.yml'
 
+workflow_dispatch:
+
 env:
   # All images get pushed to ghcr.io
   REGISTRY: ghcr.io
